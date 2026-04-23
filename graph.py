@@ -160,3 +160,83 @@ class FlightGraph:
                 articulation_points.add(airport)
 
         return articulation_points
+
+    # Kruskal's algorithm on the undirected view of the graph:
+    # 1. Collect one undirected edge per airport pair using the minimum available cost.
+    # 2. Sort edges by cost ascending.
+    # 3. Use Union-Find to greedily add the cheapest edge that does not create a cycle.
+    #
+    # Time complexity: O(E log E) for sorting edges, plus near-O(E) for union-find.
+    # Space complexity: O(V + E) for the edge list and Union-Find parent map.
+    def kruskal_mst(self):
+        best_cost = {}
+        for origin, edges in self.adj.items():
+            for edge in edges:
+                destination, cost, _ = edge
+                if origin < destination:
+                    pair = (origin, destination)
+                else:
+                    pair = (destination, origin)
+                if pair not in best_cost or cost < best_cost[pair]:
+                    best_cost[pair] = cost
+
+        sorted_edges = sorted(best_cost.items(), key=lambda item: item[1])
+
+        parent = {airport: airport for airport in self.adj}
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a, b):
+            root_a, root_b = find(a), find(b)
+            if root_a == root_b:
+                return False
+            parent[root_b] = root_a
+            return True
+
+        mst_edges = []
+        for (a, b), cost in sorted_edges:
+            if union(a, b):
+                mst_edges.append((a, b, cost))
+
+        print("Minimum Spanning Tree (essential routes):")
+        for a, b, cost in mst_edges:
+            print(f"  {a} <-> {b}  (${cost:.2f})")
+        print(f"  Total edges: {len(mst_edges)}")
+
+        return mst_edges
+
+    # Modified Dijkstra that stops expanding a path once its cumulative cost
+    # exceeds the given budget. Only cost is used as the edge weight here.
+    #
+    # Time complexity: O((V + E) log V) with a binary min-heap priority queue.
+    # Space complexity: O(V) for the best-cost map and heap.
+    def budget_reachable(self, origin, budget):
+        if origin not in self.adj:
+            raise ValueError("Unknown airport.")
+        if budget < 0:
+            return set()
+
+        best_cost = {origin: 0.0}
+        heap = [(0.0, origin)]
+        reachable = set()
+
+        while heap:
+            current_cost, current_airport = heapq.heappop(heap)
+
+            if current_cost > best_cost.get(current_airport, float("inf")):
+                continue
+
+            reachable.add(current_airport)
+
+            for edge in self.adj[current_airport]:
+                neighbor, cost, _ = edge
+                new_cost = current_cost + cost
+                if new_cost <= budget and new_cost < best_cost.get(neighbor, float("inf")):
+                    best_cost[neighbor] = new_cost
+                    heapq.heappush(heap, (new_cost, neighbor))
+
+        return reachable
