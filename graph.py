@@ -1,5 +1,6 @@
 import csv
 import heapq
+from collections import deque
 
 
 # FlightGraph: weighted directed graph using a dictionary of adjacency lists.
@@ -88,3 +89,30 @@ class FlightGraph:
         path.reverse()
 
         return path, distances[destination]
+
+    # Time complexity: O(V + E) in the worst case, since each airport is enqueued
+    # at most once and each outgoing route is examined at most once.
+    # Space complexity: O(V) for the visited set and the BFS queue.
+    def bfs_reachable(self, origin, max_connections):
+        if origin not in self.adj:
+            raise ValueError("Unknown airport.")
+
+        if max_connections <= 0:
+            return {origin}
+
+        visited = {origin}
+        queue = deque([(origin, 0)])
+
+        while queue:
+            current_airport, hops = queue.popleft()
+
+            if hops == max_connections:
+                continue
+
+            for edge in self.adj[current_airport]:
+                neighbor = edge[0]
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, hops + 1))
+
+        return visited
